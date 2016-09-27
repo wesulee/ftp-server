@@ -5,9 +5,10 @@
 #include <limits>
 
 
-int main() {
-	Utility::RNG::init();
+int main(int argc, char** argv) {
+	(void)argc;
 	try {
+		Utility::init(argv[0]);
 		Server::instance().reset(new Server{21, 1});
 	}
 	catch (const std::exception& e) {

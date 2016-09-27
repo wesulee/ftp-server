@@ -1,6 +1,5 @@
 #include "server.h"
 #include "session.h"
-#include "utility.h"
 #include <cassert>
 #include <limits>
 #include <stdexcept>
@@ -109,7 +108,7 @@ User* Server::getUser(const std::string& user, const std::string& pass) {
 	if (it == users.end()) {
 		return nullptr;
 	}
-	const std::string saltedPass = (pass + Utility::getPasswordSalt());
+	const std::string saltedPass = (pass + it->second.salt);
 	MD5Digest digest = MD5::getDigest(MD5::strToByteArray(saltedPass));
 	if (digest == it->second.pass) {
 		return &it->second;

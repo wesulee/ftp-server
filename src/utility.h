@@ -8,9 +8,6 @@ namespace Constants {
 	constexpr char configName[] = "config.yaml";
 	constexpr char EOL[] = "\r\n";	// CR LF
 	constexpr char SP[] = " ";
-	constexpr int defaultServerPort = 21;
-	constexpr int defaultNumServerThreads = 2;
-	constexpr int saltLength = 16;
 	constexpr std::size_t CMD_BUF_SZ = 2048;
 }
 
@@ -58,7 +55,8 @@ namespace Utility {
 		static std::minstd_rand generator;
 	};
 
-	std::string getPasswordSalt(const int = Constants::saltLength);
+	void init(const char*);
+	std::string getPasswordSalt(const int);
 	std::string generateServerResponseStr(const int, const std::string&);
 	bool validReturnCode(const int);
 }

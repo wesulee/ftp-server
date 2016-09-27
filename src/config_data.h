@@ -1,6 +1,6 @@
 #pragma once
 
-#include "user.h"
+#include <ostream>
 #include <vector>
 
 
@@ -10,24 +10,27 @@ class ConfigData {
 public:
 	struct User {
 		std::string name;
-		std::string passHash;
 		std::string passSalt;
+		std::string passHash;
 		std::string homeDir;
 	};
 
-	static ConfigData getDefault(void);
+	ConfigData(const ConfigData&) = default;
 	~ConfigData() = default;
+	static ConfigData getDefault(void);
 	static ConfigData read(const std::string&);
 	void write(const std::string&);
 	int getPort(void) const;
 	int getNumThreads(void) const;
 private:
 	ConfigData() = default;
+	void doWrite(std::ostream&);
 
 	std::vector<User> users;
 	int port;
 	int maxNumConcurrentUsers;
 	int numThreads;
+	int passSaltLen;
 };
 
 

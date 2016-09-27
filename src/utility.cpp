@@ -1,6 +1,9 @@
 #include "utility.h"
+#include "config_data.h"
 #include <cctype>
 #include <chrono>
+#define BOOST_FILESYSTEM_NO_DEPRECATED
+#include <boost/filesystem.hpp>
 
 
 std::minstd_rand Utility::RNG::generator;
@@ -25,6 +28,23 @@ char RNG::getSaltChar() {
 		c = dist(generator);
 	} while (!std::isalnum(c));
 	return static_cast<char>(c);
+}
+
+
+void init(const char* argv0) {
+	namespace fs = boost::filesystem;
+	RNG::init();
+	// Update current working directory to executable directory
+	const fs::path pathExe{fs::system_complete(fs::path{argv0})};
+	const fs::path pathExeParent{pathExe.parent_path()};
+	fs::current_path(pathExeParent);
+	// Create default config file if one does not exist
+	const fs::path configPath{std::string{Constants::configName}};
+	fs::file_status configPathStatus = fs::status(configPath);
+	if (!fs::exists(configPathStatus)) {
+		ConfigData defaultConfig = ConfigData::getDefault();
+		defaultConfig.write(configPath.string());
+	}
 }
 
 
