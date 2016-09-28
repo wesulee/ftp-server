@@ -1,7 +1,9 @@
 // Assumes little-endian (for now)
 #include "md5.h"
+#include <algorithm>	// find
 #include <cassert>
 #include <cmath>
+#include <stdexcept>	// invalid_argument
 
 
 namespace MD5Constants {
@@ -40,6 +42,43 @@ namespace MD5Constants {
 	constexpr std::array<std::uint32_t, 4> R3_s = {4, 11, 16, 23};
 	constexpr std::array<std::uint32_t, 4> R4_s = {6, 10, 15, 21};
 	constexpr char hexDigits[] = "0123456789abcdef";
+}
+
+
+// getDigitVal helper
+static std::size_t findDigit(const char c) {
+	const char* digit = std::find(
+		MD5Constants::hexDigits,
+		MD5Constants::hexDigits + sizeof(MD5Constants::hexDigits) - 1,
+		c
+	);
+	if (digit == (MD5Constants::hexDigits + sizeof(MD5Constants::hexDigits) - 1))
+		return std::string::npos;
+	else
+		return static_cast<std::size_t>(digit - MD5Constants::hexDigits);
+}
+
+
+// MD5Digest helper
+static std::uint8_t getDigitVal(const char c) {
+	const std::size_t digitVal = findDigit(c);
+	if (digitVal == std::string::npos)
+		throw std::invalid_argument{"invalid digest string"};
+	assert(digitVal < 16);
+	return static_cast<std::uint8_t>(digitVal);
+}
+
+
+// throws invalid_argument
+MD5Digest::MD5Digest(const std::string& str) {
+	if (str.size() != 32)
+		throw std::invalid_argument{"invalid digest size"};
+	std::uint8_t val;
+	for (std::size_t i = 0; i < 16; ++i) {
+		val = (getDigitVal(str[i*2]) << 4);
+		val |= getDigitVal(str[i*2 + 1]);
+		digest[i] = val;
+	}
 }
 
 

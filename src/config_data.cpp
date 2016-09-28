@@ -2,6 +2,9 @@
 #include "md5.h"
 #include "utility.h"
 #include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <utility>	// pair
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 #include <boost/filesystem.hpp>
 #include <yaml-cpp/yaml.h>
@@ -11,6 +14,7 @@ namespace fs = boost::filesystem;
 
 
 namespace ConfigDataDefaults {
+	constexpr char welcomeMessage[] = "Welcome!";
 	constexpr char name[] = "anonymous";
 	constexpr char homeDir[] = "public_ftp";
 	constexpr int serverPort = 21;
@@ -24,6 +28,7 @@ namespace ConfigKeys {
 	constexpr char maxNumConcurrentUsers[] = "maxUsers";
 	constexpr char numThreads[] = "numThreads";
 	constexpr char passSaltLen[] = "saltLen";
+	constexpr char welcomeMessage[] = "welcomeMessage";
 	constexpr char users[] = "users";
 	constexpr char user_name[] = "name";
 	constexpr char user_passSalt[] = "passSalt";
@@ -32,14 +37,96 @@ namespace ConfigKeys {
 }
 
 
+namespace ReadUtil {
+	constexpr char errorMsg[] = "invalid config file";
+	std::string getFileContents(const std::string&);
+	std::pair<int, bool> toInt(const std::string&);
+	std::string errorStrKey(const char*);
+	std::string errorStrIntVal(const char*, const std::string&);
+	std::string getValueStr(const YAML::Node&, const char*);
+	int getValueInt(const YAML::Node&, const char*);
+}
+
+
+namespace WriteUtil {
+	template<class K, class V>
+	void writePair(YAML::Emitter&, const K, const V&);
+	void writeUser(YAML::Emitter&, const ConfigData::User&);
+	std::string errorStrIntVal(const char*, const std::string&);
+}
+
+
+namespace ReadUtil {
+
+std::string getFileContents(const std::string& path) {
+	std::ifstream f{path};
+	if (!f.good()) {
+		throw std::runtime_error{"unable to open file \"" + path + '"'};
+	}
+	// read entire contents of file into string
+	std::stringstream ss;
+	ss << f.rdbuf();
+	return ss.str();
+}
+
+
+std::pair<int, bool> toInt(const std::string& str) {
+	try {
+		return std::make_pair(std::stoi(str), true);
+	}
+	catch (std::exception& e) {
+		return std::make_pair(0, false);
+	}
+}
+
+
+std::string errorStrKey(const char* key) {
+	return (std::string{ReadUtil::errorMsg} + ": missing key \"" + key + '"');
+}
+
+
+std::string errorStrIntVal(const char* key, const std::string& val) {
+	return (
+		std::string{ReadUtil::errorMsg} + ": key \"" + key
+		+ "\" invalid value \"" + val + '"'
+	);
+}
+
+
+// throws runtime_error if missing key
+std::string getValueStr(const YAML::Node& node, const char* key) {
+	if (!node[key]) {
+		throw std::runtime_error{errorStrKey(key)};
+	}
+	return node[key].as<std::string>();
+}
+
+
+// throws runtime_error if missing key or if invalid int
+int getValueInt(const YAML::Node& node, const char* key) {
+	const std::string valStr = getValueStr(node, key);
+	std::pair<int, bool> val = toInt(valStr);
+	if (val.second) {
+		return val.first;
+	}
+	else {
+		throw std::runtime_error{errorStrIntVal(key, valStr)};
+	}
+}
+
+}	// namespace ReadUtil
+
+
+namespace WriteUtil {
+
 template<class K, class V>
-static void writePair(YAML::Emitter& out, const K key, const V& val) {
+void writePair(YAML::Emitter& out, const K key, const V& val) {
 	out << YAML::Key << key
 	    << YAML::Value << val;
 }
 
 
-static void writeUser(YAML::Emitter& out, const ConfigData::User& user) {
+void writeUser(YAML::Emitter& out, const ConfigData::User& user) {
 	out << YAML::BeginMap;
 	writePair(out, ConfigKeys::user_name, user.name);
 	writePair(out, ConfigKeys::user_passSalt, user.passSalt);
@@ -48,19 +135,51 @@ static void writeUser(YAML::Emitter& out, const ConfigData::User& user) {
 	out << YAML::EndMap;
 }
 
+}	// namespace WriteUtil
+
 
 ConfigData ConfigData::getDefault() {
 	ConfigData data;
 	data.port = ConfigDataDefaults::serverPort;
 	data.numThreads = ConfigDataDefaults::numServerThreads;
 	data.passSaltLen = ConfigDataDefaults::saltLength;
+	data.welcomeMessage = ConfigDataDefaults::welcomeMessage;
 	data.users.emplace_back();
 	data.users.back().name = ConfigDataDefaults::name;
 	data.users.back().passSalt = Utility::getPasswordSalt(data.passSaltLen);
-	data.users.back().passHash = MD5::getDigest(
-		MD5::strToByteArray(data.users.back().passSalt)
-	).str();
+	data.users.back().passHash = MD5::getDigest(data.users.back().passSalt).str();
 	data.users.back().homeDir = ConfigDataDefaults::homeDir;
+	return data;
+}
+
+
+// throws runtime_error
+ConfigData ConfigData::read(const std::string& path) {
+	ConfigData data;
+	YAML::Node node = YAML::Load(ReadUtil::getFileContents(path));
+	if (!node.IsMap())
+		throw std::runtime_error{ReadUtil::errorMsg};
+	data.port = ReadUtil::getValueInt(node, ConfigKeys::port);
+	data.maxNumConcurrentUsers = ReadUtil::getValueInt(node, ConfigKeys::maxNumConcurrentUsers);
+	data.numThreads = ReadUtil::getValueInt(node, ConfigKeys::numThreads);
+	data.passSaltLen = ReadUtil::getValueInt(node, ConfigKeys::passSaltLen);
+	data.welcomeMessage = ReadUtil::getValueStr(node, ConfigKeys::welcomeMessage);
+	// read users
+	if (!node[ConfigKeys::users])
+		throw std::runtime_error{ReadUtil::errorStrKey(ConfigKeys::users)};
+	const YAML::Node& usersSeq = node[ConfigKeys::users];
+	if (!usersSeq.IsSequence())
+		throw std::runtime_error{ReadUtil::errorMsg};
+	User tmpUser;
+	for (YAML::const_iterator it = usersSeq.begin(); it != usersSeq.end(); ++it) {
+		if (!it->IsMap())
+			throw std::runtime_error{ReadUtil::errorMsg};
+		tmpUser.name = ReadUtil::getValueStr(*it, ConfigKeys::user_name);
+		tmpUser.passSalt = ReadUtil::getValueStr(*it, ConfigKeys::user_passSalt);
+		tmpUser.passHash = ReadUtil::getValueStr(*it, ConfigKeys::user_passHash);
+		tmpUser.homeDir = ReadUtil::getValueStr(*it, ConfigKeys::user_homeDir);
+		data.users.push_back(tmpUser);
+	}
 	return data;
 }
 
@@ -97,14 +216,15 @@ void ConfigData::doWrite(std::ostream& os) {
 	YAML::Emitter out;
 	out << YAML::BeginMap;
 	// general
-	writePair(out, ConfigKeys::port, port);
-	writePair(out, ConfigKeys::maxNumConcurrentUsers, maxNumConcurrentUsers);
-	writePair(out, ConfigKeys::numThreads, numThreads);
-	writePair(out, ConfigKeys::passSaltLen, passSaltLen);
+	WriteUtil::writePair(out, ConfigKeys::port, port);
+	WriteUtil::writePair(out, ConfigKeys::maxNumConcurrentUsers, maxNumConcurrentUsers);
+	WriteUtil::writePair(out, ConfigKeys::numThreads, numThreads);
+	WriteUtil::writePair(out, ConfigKeys::passSaltLen, passSaltLen);
+	WriteUtil::writePair(out, ConfigKeys::welcomeMessage, welcomeMessage);
 	// users
 	out << YAML::Key << ConfigKeys::users << YAML::Value << YAML::BeginSeq;
 	for (const User& user : users)
-		writeUser(out, user);
+		WriteUtil::writeUser(out, user);
 	out << YAML::EndSeq;
 	// finish
 	out << YAML::EndMap;

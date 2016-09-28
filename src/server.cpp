@@ -3,6 +3,7 @@
 #include <cassert>
 #include <limits>
 #include <stdexcept>
+#include <utility>	// make_pair
 
 
 std::shared_ptr<Server> Server::serverInstance;
@@ -19,8 +20,9 @@ static constexpr bool validNumThreads(const int numThreads) {
 
 
 // throws boost::system::system_error, std::invalid_argument
-Server::Server(const int port, const int numThreads)
-: acceptor{ios}, ios_work{new boost::asio::io_service::work{ios}} {
+Server::Server(const int port, const int numThreads, const std::string& welcomeMsg)
+: acceptor{ios}, ios_work{new boost::asio::io_service::work{ios}},
+welcomeMessage{welcomeMsg} {
 	assert(validPort(port));
 	assert(validNumThreads(numThreads));
 	if (!validPort(port))
@@ -59,6 +61,16 @@ void Server::stop() {
 	ios.stop();
 	for (auto& thread : threads)
 		thread.join();
+}
+
+
+// throws invalid_argument
+void Server::setUsers(const std::vector<User>& usersVec) {
+	for (const auto& user : usersVec) {
+		auto insert = users.insert(std::make_pair(user.name, user));
+		if (!insert.second)
+			throw std::invalid_argument{"duplicate user"};
+	}
 }
 
 
@@ -109,7 +121,7 @@ User* Server::getUser(const std::string& user, const std::string& pass) {
 		return nullptr;
 	}
 	const std::string saltedPass = (pass + it->second.salt);
-	MD5Digest digest = MD5::getDigest(MD5::strToByteArray(saltedPass));
+	MD5Digest digest = MD5::getDigest(saltedPass);
 	if (digest == it->second.pass) {
 		return &it->second;
 	}

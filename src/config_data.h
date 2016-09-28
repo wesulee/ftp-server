@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ostream>
+#include <string>
 #include <vector>
 
 
@@ -22,11 +23,14 @@ public:
 	void write(const std::string&);
 	int getPort(void) const;
 	int getNumThreads(void) const;
+	const std::string& getWelcomeMessage(void) const;
+	const std::vector<User>& getUsers(void) const;
 private:
 	ConfigData() = default;
 	void doWrite(std::ostream&);
 
 	std::vector<User> users;
+	std::string welcomeMessage;
 	int port;
 	int maxNumConcurrentUsers;
 	int numThreads;
@@ -43,4 +47,16 @@ int ConfigData::getPort() const {
 inline
 int ConfigData::getNumThreads() const {
 	return numThreads;
+}
+
+
+inline
+const std::string& ConfigData::getWelcomeMessage() const {
+	return welcomeMessage;
+}
+
+
+inline
+const std::vector<ConfigData::User>& ConfigData::getUsers() const {
+	return users;
 }

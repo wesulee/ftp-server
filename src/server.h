@@ -17,12 +17,11 @@ class Session;
 class Server {
 public:
 	static std::shared_ptr<Server>& instance(void);
-	Server(const int, const int);
+	Server(const int, const int, const std::string&);
 	~Server() = default;
 	void run(void);
 	void stop(void);
 	void setUsers(const std::vector<User>&);
-	void setWelcomeMessage(const std::string&);
 	const std::string& getWelcomeMessage(void) const;
 	void beginAccept(void);
 	void addSession(std::shared_ptr<Session>&);
@@ -47,12 +46,6 @@ private:
 inline
 std::shared_ptr<Server>& Server::instance() {
 	return serverInstance;
-}
-
-
-inline
-void Server::setWelcomeMessage(const std::string& str) {
-	welcomeMessage = str;
 }
 
 

@@ -6,17 +6,15 @@ std::unordered_map<std::string, Command::Name> Command::nameMap = {
 };
 
 
-Command::Command() : name{Name::_NONE} {
-}
-
-
 Command::Command(const std::string& str) : Command{} {
 	const std::size_t spIndex = str.find(' ');
 	if (spIndex == std::string::npos) {
 		name = parseName(str);
+		// arg is empty
 	}
 	else {
 		name = parseName(str.substr(0, spIndex));
+		arg = str.substr(spIndex + 1);
 	}
 }
 

@@ -5,7 +5,8 @@
 
 
 struct User {
+	MD5Digest pass;
 	std::string name;
 	std::string salt;
-	MD5Digest pass;
+	std::string home;
 };
