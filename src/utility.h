@@ -40,7 +40,7 @@ x5x File system
 namespace ReturnCode {
 	constexpr int loggedIn = 230;
 	constexpr int userOkNeedPass = 331;
-	constexpr int syntaxError = 500;
+	constexpr int syntaxError = 500;	// or unknown command
 	constexpr int badSequence = 503;	// Bad sequence of commands
 	constexpr int notLoggedIn = 530;
 }

@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c -std=c++14 -pedantic -Wall -Wextra
-LDFLAGS=-lyaml-cpp -lboost_system -lboost_filesystem -lws2_32 -lmswsock
+LDFLAGS=-lyaml-cpp -lboost_system -lboost_filesystem -lboost_program_options -lws2_32 -lmswsock
 DEBUG=-g -Wcast-align -Wcast-qual -Wctor-dtor-privacy -Wformat=2 -Winit-self -Wlogical-op -Wmissing-declarations -Wmissing-include-dirs -Wnoexcept -Wold-style-cast -Woverloaded-virtual -Wredundant-decls -Wshadow -Wsign-conversion -Wsign-promo -Wstrict-null-sentinel -Wstrict-overflow=5 -Wundef
 SRC_DIR=src
 BUILD_DIR=build

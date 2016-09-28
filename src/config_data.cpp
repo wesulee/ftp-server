@@ -196,6 +196,7 @@ void ConfigData::write(const std::string& pathStr) {
 		const fs::path oldPath = (pathStr + ".old");
 		std::ofstream fTmpPath{tmpPath.lexically_normal().string()};
 		doWrite(fTmpPath);
+		fTmpPath.close();
 		// if oldPath already exists, delete it
 		fs::remove(oldPath);
 		// rename
@@ -206,6 +207,24 @@ void ConfigData::write(const std::string& pathStr) {
 		std::ofstream fPath{path.lexically_normal().string()};
 		doWrite(fPath);
 	}
+}
+
+
+// throws invalid_argument if user already exists
+void ConfigData::addUser(const std::string& username, const std::string& password,
+const std::string& homeDir) {
+	// check if user exist
+	for (const auto& user : users) {
+		if (user.name == username) {
+			throw std::invalid_argument{"user already exists"};
+		}
+	}
+	users.emplace_back();
+	users.back().name = username;
+	users.back().passSalt = Utility::getPasswordSalt(passSaltLen);
+	const std::string saltedPass = (password + users.back().passSalt);
+	users.back().passHash = MD5::getDigest(saltedPass).str();
+	users.back().homeDir = homeDir;
 }
 
 

@@ -21,6 +21,7 @@ public:
 	static ConfigData getDefault(void);
 	static ConfigData read(const std::string&);
 	void write(const std::string&);
+	void addUser(const std::string&, const std::string&, const std::string&);
 	int getPort(void) const;
 	int getNumThreads(void) const;
 	const std::string& getWelcomeMessage(void) const;
