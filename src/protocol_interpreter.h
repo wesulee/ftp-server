@@ -37,6 +37,7 @@ private:
 	void write(void);
 	void readSome(std::shared_ptr<LoginData>);
 	void write(std::shared_ptr<LoginData>);
+	static std::string getFeaturesResp(void);
 
 	Session& session;
 	CommandBuffer inputBuffer;

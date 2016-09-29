@@ -67,6 +67,26 @@ void ProtocolInterpreter::readCallback(const boost::system::error_code& ec, std:
 				);
 				write();
 				break;
+			case Command::Name::FEAT:
+				if (!cmd.getArg().empty()) {
+					setOutputBuffer(
+						ReturnCode::argumentSyntaxError,
+						ResponseString::invalidCmd,
+						sizeof(ResponseString::invalidCmd)
+					);
+					write();
+				}
+				else {
+					const std::string featStr = getFeaturesResp();
+					boost::asio::async_write(
+						session.getPISocket(),
+						boost::asio::buffer(featStr),
+						[this](const boost::system::error_code& ec2, std::size_t nBytes2) {
+							writeCallback(ec2, nBytes2);
+						}
+					);
+				}
+				break;
 			default:
 				break;
 			}
@@ -340,4 +360,19 @@ void ProtocolInterpreter::write(std::shared_ptr<LoginData> data) {
 			writeCallback(ec, nBytes, data);
 		}
 	);
+}
+
+
+// https://tools.ietf.org/html/rfc2389
+std::string ProtocolInterpreter::getFeaturesResp() {
+	std::string str{"211-Features"};
+	str.append(Constants::EOL);
+	for (const auto feat : Constants::features) {
+		str.append(Constants::SP);
+		str.append(feat);
+		str.append(Constants::EOL);
+	}
+	str.append("211 End");
+	str.append(Constants::EOL);
+	return str;
 }

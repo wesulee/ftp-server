@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <random>
 #include <string>
 
@@ -9,6 +10,7 @@ namespace Constants {
 	constexpr char EOL[] = "\r\n";	// CR LF
 	constexpr char SP[] = " ";
 	constexpr std::size_t CMD_BUF_SZ = 2048;
+	constexpr std::array<const char*, 1> features = {"PASV"};	// TODO support PASV
 }
 
 
@@ -20,6 +22,7 @@ namespace ResponseString {
 	constexpr char unknownCmd[] = "Unknown command.";
 	constexpr char cannotChangeUser[] = "Cannot change user.";
 	constexpr char badSequence[] = "Bad sequence of commands.";
+	constexpr char invalidCmd[] = "Invalid command.";
 }
 
 
@@ -41,6 +44,7 @@ namespace ReturnCode {
 	constexpr int loggedIn = 230;
 	constexpr int userOkNeedPass = 331;
 	constexpr int syntaxError = 500;	// or unknown command
+	constexpr int argumentSyntaxError = 501;
 	constexpr int badSequence = 503;	// Bad sequence of commands
 	constexpr int notLoggedIn = 530;
 }
