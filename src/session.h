@@ -12,6 +12,7 @@ class Session {
 public:
 	Session(boost::asio::io_service&);
 	~Session();
+	ProtocolInterpreter& getPI(void);
 	boost::asio::ip::tcp::socket& getPISocket(void);
 	void run(void);
 	void setUser(User*);
@@ -23,6 +24,12 @@ private:
 	std::string cwd;
 	User* user;
 };
+
+
+inline
+ProtocolInterpreter& Session::getPI() {
+	return pi;
+}
 
 
 inline

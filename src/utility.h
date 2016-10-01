@@ -41,6 +41,7 @@ x4x Unspecified
 x5x File system
 */
 namespace ReturnCode {
+	constexpr int systemStatus = 211;
 	constexpr int loggedIn = 230;
 	constexpr int userOkNeedPass = 331;
 	constexpr int syntaxError = 500;	// or unknown command

@@ -1,4 +1,6 @@
 #include "protocol_interpreter.h"
+#include "asio_data.h"
+#include "response.h"
 #include "server.h"
 #include "session.h"
 #include "utility.h"
@@ -13,98 +15,85 @@ ProtocolInterpreter::ProtocolInterpreter(Session& s) : session{s} {
 
 // Send 220 "Ready" reply
 void ProtocolInterpreter::begin() {
-	const std::string message = Utility::generateServerResponseStr(
-		220, Server::instance()->getWelcomeMessage()
-	);
 	std::shared_ptr<LoginData> data{new LoginData};
-	boost::asio::async_write(
-		session.getPISocket(),
-		boost::asio::buffer(message),
-		[this, data](const boost::system::error_code& ec, std::size_t nBytes) {
-			writeCallback(ec, nBytes, data);
+	std::shared_ptr<Response> resp{new Response{session}};
+	resp->setCode(220);
+	resp->set(
+		Utility::generateServerResponseStr(220, Server::instance()->getWelcomeMessage())
+	);
+	resp->setCallback(
+		[this, data](const AsioData& asioData, std::shared_ptr<Response> resp2) {
+			writeCallback(asioData, resp2, data);
 		}
 	);
+	resp->send();
 }
 
 
-void ProtocolInterpreter::setCmd() {
-	cmd = Command{cmdStr};
+std::shared_ptr<Response> ProtocolInterpreter::makeResponse() {
+	std::shared_ptr<Response> resp{new Response{session, cmdStr}};
 	cmdStr.clear();
+	return resp;
 }
 
 
 void ProtocolInterpreter::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 	if (ec.value() != 0) {
 		// TODO
+		return;
 	}
-	else {
-		if (updateReadInput(nBytes)) {
-			setCmd();
-			switch (cmd.getName()) {
-			case Command::Name::_INVALID:
-				setOutputBuffer(
-					ReturnCode::syntaxError,
-					ResponseString::unknownCmd,
-					sizeof(ResponseString::unknownCmd)
-				);
-				write();
-				break;
-			case Command::Name::USER:
-				// changing users not implemented
-				setOutputBuffer(
-					ReturnCode::badSequence,
-					ResponseString::cannotChangeUser,
-					sizeof(ResponseString::cannotChangeUser)
-				);
-				write();
-				break;
-			case Command::Name::PASS:
-				// user has already logged in, bad sequence
-				setOutputBuffer(
-					ReturnCode::badSequence,
-					ResponseString::badSequence,
-					sizeof(ResponseString::badSequence)
-				);
-				write();
-				break;
-			case Command::Name::FEAT:
-				if (!cmd.getArg().empty()) {
-					setOutputBuffer(
-						ReturnCode::argumentSyntaxError,
-						ResponseString::invalidCmd,
-						sizeof(ResponseString::invalidCmd)
-					);
-					write();
-				}
-				else {
-					const std::string featStr = getFeaturesResp();
-					boost::asio::async_write(
-						session.getPISocket(),
-						boost::asio::buffer(featStr),
-						[this](const boost::system::error_code& ec2, std::size_t nBytes2) {
-							writeCallback(ec2, nBytes2);
-						}
-					);
-				}
-				break;
-			default:
-				break;
-			}
+	if (!updateReadInput(nBytes)) {
+		readSome();
+		return;
+	}
+	std::shared_ptr<Response> resp = makeResponse();
+	resp->setCallback(
+		[this](const AsioData& asioData, std::shared_ptr<Response> resp2) {
+			writeCallback(asioData, resp2);
+		}
+	);
+	switch (resp->getCmd().getName()) {
+	case Command::Name::_INVALID:
+		resp->setCode(ReturnCode::syntaxError);
+		resp->append(ResponseString::unknownCmd, sizeof(ResponseString::unknownCmd)-1);
+		break;
+	case Command::Name::USER:
+		// changing users not implemented
+		resp->setCode(ReturnCode::badSequence);
+		resp->append(ResponseString::cannotChangeUser, sizeof(ResponseString::cannotChangeUser)-1);
+		break;
+	case Command::Name::PASS:
+		// user has already logged in, bad sequence
+		resp->setCode(ReturnCode::badSequence);
+		resp->append(ResponseString::badSequence, sizeof(ResponseString::badSequence)-1);
+		break;
+	case Command::Name::FEAT:
+		if (!resp->getCmd().getArg().empty()) {
+			resp->setCode(ReturnCode::argumentSyntaxError);
+			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
 		}
 		else {
-			readSome();
+			resp->setCode(ReturnCode::systemStatus);
+			resp->set(getFeaturesResp());
 		}
+		break;
+	default:
+		break;
 	}
+	resp->send();
 }
 
 
-void ProtocolInterpreter::writeCallback(const boost::system::error_code& ec, std::size_t nBytes) {
-	if (ec.value() != 0) {
+void ProtocolInterpreter::writeCallback(const AsioData& asioData, std::shared_ptr<Response> resp) {
+	if (asioData.ec.value() != 0) {
 		// TODO
+		return;
 	}
-	else {
-		readSome();
+	if (!resp->done()) {
+		resp->writeSome();
+		return;
 	}
+	readSome();
 }
 
 
@@ -112,125 +101,104 @@ void ProtocolInterpreter::readCallback(const boost::system::error_code& ec,
 std::size_t nBytes, std::shared_ptr<LoginData> data) {
 	if (ec.value() != 0) {
 		// TODO
+		return;
 	}
-	else {
-		bool flag;
-		switch (data->state) {
-		case LoginData::State::READ_USER:
-			flag = true;	// continue reading if true
-			// check if input buffer contains a finished command
-			if (updateReadInput(nBytes)) {
-				flag = false;
-				setCmd();
-				if (cmd.getName() == Command::Name::USER) {
-					data->username = cmd.getArg();
-					data->state = LoginData::State::RESP_USER;
-					setOutputBuffer(
-						ReturnCode::userOkNeedPass,
-						ResponseString::loginReqPass,
-						sizeof(ResponseString::loginReqPass)
-					);
-				}
-				else {
-					// until logged in, ignore all commands except USER and PASS
-					setOutputBuffer(
-						ReturnCode::notLoggedIn,
-						ResponseString::loginRequest,
-						sizeof(ResponseString::loginRequest)
-					);
-				}
-				write(data);
-			}
-			if (flag) {
-				// continue reading
-				readSome();
-			}
-			break;
-		case LoginData::State::READ_PASS:
-			// USER was provided, response was sent, now expecting PASS
-			flag = true;	// continue reading if true
-			if (updateReadInput(nBytes)) {
-				flag = false;
-				setCmd();
-				if (cmd.getName() == Command::Name::PASS) {
-					data->password = cmd.getArg();
-					data->state = LoginData::State::RESP_PASS;
-					// validate login
-					data->user = Server::instance()->getUser(data->username, data->password);
-					if (data->user != nullptr) {
-						// valid login provided, set Session state
-						session.setUser(data->user);
-						setOutputBuffer(
-							ReturnCode::loggedIn,
-							ResponseString::loginSuccess,
-							sizeof(ResponseString::loginSuccess)
-						);
-					}
-					else {
-						// incorrect login, reset state
-						data->state = LoginData::State::READ_USER;
-						setOutputBuffer(
-							ReturnCode::notLoggedIn,
-							ResponseString::loginIncorrect,
-							sizeof(ResponseString::loginIncorrect)
-						);
-					}
-				}
-				else {
-					// Reset state to beginning since PASS must be provided
-					//   immediately after USER.
-					data->state = LoginData::State::READ_USER;
-					setOutputBuffer(
-						ReturnCode::notLoggedIn,
-						ResponseString::loginRequest,
-						sizeof(ResponseString::loginRequest)
-					);
-				}
-				write(data);
-			}
-			if (flag)
-				readSome(data);
-			break;
-		case LoginData::State::RESP_USER:
-		case LoginData::State::RESP_PASS:
-			assert(false);
-			throw std::logic_error{"invalid login state"};
-			break;
+	if (!updateReadInput(nBytes)) {
+		readSome(data);
+		return;
+	}
+	std::shared_ptr<Response> resp = makeResponse();
+	resp->setCallback(
+		[this, data](const AsioData& asioData, std::shared_ptr<Response> resp2) {
+			writeCallback(asioData, resp2, data);
 		}
+	);
+	switch (data->state) {
+	case LoginData::State::READ_USER:
+		// check if input buffer contains a finished command
+		if (resp->getCmd().getName() == Command::Name::USER) {
+			data->username = resp->getCmd().getArg();
+			data->state = LoginData::State::RESP_USER;
+			resp->setCode(ReturnCode::userOkNeedPass);
+			resp->append(ResponseString::loginReqPass, sizeof(ResponseString::loginReqPass)-1);
+		}
+		else {
+			// until logged in, ignore all commands except USER and PASS
+			resp->setCode(ReturnCode::notLoggedIn);
+			resp->append(ResponseString::loginRequest, sizeof(ResponseString::loginRequest)-1);
+		}
+		break;
+	case LoginData::State::READ_PASS:
+		// USER was provided, response was sent, now expecting PASS
+		if (resp->getCmd().getName() == Command::Name::PASS) {
+			data->password = resp->getCmd().getArg();
+			data->state = LoginData::State::RESP_PASS;
+			// validate login
+			data->user = Server::instance()->getUser(data->username, data->password);
+			if (data->user != nullptr) {
+				// valid login provided, set Session state
+				session.setUser(data->user);
+				resp->setCode(ReturnCode::loggedIn);
+				resp->append(ResponseString::loginSuccess, sizeof(ResponseString::loginSuccess)-1);
+			}
+			else {
+				// incorrect login, reset state
+				data->state = LoginData::State::READ_USER;
+				resp->setCode(ReturnCode::notLoggedIn);
+				resp->append(ResponseString::loginIncorrect, sizeof(ResponseString::loginIncorrect)-1);
+			}
+		}
+		else {
+			// Reset state to beginning since PASS must be provided
+			//   immediately after USER.
+			data->state = LoginData::State::READ_USER;
+			resp->setCode(ReturnCode::notLoggedIn);
+			resp->append(ResponseString::loginRequest, sizeof(ResponseString::loginRequest)-1);
+		}
+		break;
+	case LoginData::State::RESP_USER:
+	case LoginData::State::RESP_PASS:
+		assert(false);
+		throw std::logic_error{"invalid login state"};
+		break;
 	}
+	resp->send();
 }
 
 
-void ProtocolInterpreter::writeCallback(const boost::system::error_code& ec,
-std::size_t nBytes, std::shared_ptr<LoginData> data) {
-	if (ec.value() != 0) {
+void ProtocolInterpreter::writeCallback(const AsioData& asioData, std::shared_ptr<Response> resp,
+std::shared_ptr<LoginData> data) {
+	if (asioData.ec.value() != 0) {
 		// TODO
+		return;
 	}
-	else {
-		switch (data->state) {
-		case LoginData::State::READ_USER:
-			// A response was sent (welcome message, invalid login, invalid command),
-			//   so keep trying to read USER command.
-			readSome(data);
-			break;
-		case LoginData::State::RESP_USER:
-			// response to USER command was sent, now read PASS
-			data->state = LoginData::State::READ_PASS;
-			readSome(data);
-			break;
-		case LoginData::State::READ_PASS:
-			// When state is set to READ_PASS, it stays in read loop
-			//   and eventually changes state and responds, so this
-			//   case should never happen.
-			assert(false);
-			throw std::logic_error{"invalid login state"};
-			break;
-		case LoginData::State::RESP_PASS:
-			// PASS response was just sent and user is now logged in.
-			// Read next command.
-			readSome();
-			break;
-		}
+	if (!resp->done()) {
+		resp->writeSome();
+		return;
+	}
+	switch (data->state) {
+	case LoginData::State::READ_USER:
+		// A response was sent (welcome message, invalid login, invalid command),
+		//   so keep trying to read USER command.
+		readSome(data);
+		break;
+	case LoginData::State::RESP_USER:
+		// response to USER command was sent, now read PASS
+		data->state = LoginData::State::READ_PASS;
+		readSome(data);
+		break;
+	case LoginData::State::READ_PASS:
+		// When state is set to READ_PASS, it stays in read loop
+		//   and eventually changes state and responds, so this
+		//   case should never happen.
+		assert(false);
+		throw std::logic_error{"invalid login state"};
+		break;
+	case LoginData::State::RESP_PASS:
+		// PASS response was just sent and user is now logged in.
+		// Read next command.
+		readSome();
+		break;
 	}
 }
 
@@ -293,27 +261,11 @@ bool ProtocolInterpreter::updateReadInput(std::size_t nBytes) {
 }
 
 
-// str should be a NULL terminated string
-// sz is length of str (including NULL termination)
-void ProtocolInterpreter::setOutputBuffer(int code, const char* str, const std::size_t sz) {
-	assert(sz > 0);
-	assert(sz <= outputBuffer.buf.size());
-	assert(Utility::validReturnCode(code));
-	outputBuffer.sz = 0;
-	const std::string codeStr = std::to_string(code);
-	assert(codeStr.size() == 3);
-	outputBuffer.append(codeStr.c_str(), 3);
-	outputBuffer.append(Constants::SP, 1);
-	outputBuffer.append(str, sz-1);
-	outputBuffer.append(Constants::EOL, sizeof(Constants::EOL)-1);
-}
-
-
 void ProtocolInterpreter::readSome() {
 	session.getPISocket().async_read_some(
 		boost::asio::buffer(
-			inputBuffer.buf.data() + inputBuffer.sz,
-			inputBuffer.buf.size() - inputBuffer.sz
+			inputBuffer.buf.data() + inputBuffer.size(),
+			inputBuffer.capacity() - inputBuffer.size()
 		),
 		[this](const boost::system::error_code& ec, std::size_t nBytes) {
 			readCallback(ec, nBytes);
@@ -322,42 +274,14 @@ void ProtocolInterpreter::readSome() {
 }
 
 
-void ProtocolInterpreter::write() {
-	boost::asio::async_write(
-		session.getPISocket(),
-		boost::asio::buffer(
-			outputBuffer.buf.data(),
-			outputBuffer.sz
-		),
-		[this](const boost::system::error_code& ec, std::size_t nBytes) {
-			writeCallback(ec, nBytes);
-		}
-	);
-}
-
-
 void ProtocolInterpreter::readSome(std::shared_ptr<LoginData> data) {
 	session.getPISocket().async_read_some(
 		boost::asio::buffer(
-			inputBuffer.buf.data() + inputBuffer.sz,
-			inputBuffer.buf.size() - inputBuffer.sz
+			inputBuffer.buf.data() + inputBuffer.size(),
+			inputBuffer.capacity() - inputBuffer.size()
 		),
 		[this, data](const boost::system::error_code& ec, std::size_t nBytes) {
 			readCallback(ec, nBytes, data);
-		}
-	);
-}
-
-
-void ProtocolInterpreter::write(std::shared_ptr<LoginData> data) {
-	boost::asio::async_write(
-		session.getPISocket(),
-		boost::asio::buffer(
-			outputBuffer.buf.data(),
-			outputBuffer.sz
-		),
-		[this, data](const boost::system::error_code& ec, std::size_t nBytes) {
-			writeCallback(ec, nBytes, data);
 		}
 	);
 }
