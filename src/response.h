@@ -26,6 +26,7 @@ public:
 	void setCallback(const Callback&);
 	const Command& getCmd(void) const;
 	void append(const char*, const std::size_t);
+	void append(const std::string&);
 	void set(const std::string&);
 	void send(void);
 	void writeSome(void);
@@ -78,6 +79,12 @@ void Response::append(const char* str, const std::size_t sz) {
 	assert(format);
 	// respTmp is used as temporary buffer until finalize() called
 	respTmp.append(str, sz);
+}
+
+
+inline
+void Response::append(const std::string& str) {
+	append(str.c_str(), str.size());
 }
 
 

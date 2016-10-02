@@ -43,6 +43,7 @@ x5x File system
 namespace ReturnCode {
 	constexpr int systemStatus = 211;
 	constexpr int loggedIn = 230;
+	constexpr int pathnameCreated = 257;	// success of MKD or PWD
 	constexpr int userOkNeedPass = 331;
 	constexpr int syntaxError = 500;	// or unknown command
 	constexpr int argumentSyntaxError = 501;
@@ -64,4 +65,5 @@ namespace Utility {
 	std::string getPasswordSalt(const int);
 	std::string generateServerResponseStr(const int, const std::string&);
 	bool validReturnCode(const int);
+	std::string quote(const std::string&);
 }

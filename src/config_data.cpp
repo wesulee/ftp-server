@@ -61,7 +61,7 @@ namespace ReadUtil {
 std::string getFileContents(const std::string& path) {
 	std::ifstream f{path};
 	if (!f.good()) {
-		throw std::runtime_error{"unable to open file \"" + path + '"'};
+		throw std::runtime_error{"unable to open file " + Utility::quote(path)};
 	}
 	// read entire contents of file into string
 	std::stringstream ss;
@@ -81,14 +81,14 @@ std::pair<int, bool> toInt(const std::string& str) {
 
 
 std::string errorStrKey(const char* key) {
-	return (std::string{ReadUtil::errorMsg} + ": missing key \"" + key + '"');
+	return (std::string{ReadUtil::errorMsg} + ": missing key " + Utility::quote(key));
 }
 
 
 std::string errorStrIntVal(const char* key, const std::string& val) {
 	return (
-		std::string{ReadUtil::errorMsg} + ": key \"" + key
-		+ "\" invalid value \"" + val + '"'
+		std::string{ReadUtil::errorMsg} + ": key " + Utility::quote(key)
+		+ " invalid value " + Utility::quote(val)
 	);
 }
 

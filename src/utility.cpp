@@ -76,4 +76,14 @@ bool validReturnCode(const int code) {
 	return true;
 }
 
+
+std::string quote(const std::string& str) {
+	std::string ret;
+	ret.reserve(str.size() + 2);
+	ret.push_back('"');
+	ret.append(str);
+	ret.push_back('"');
+	return ret;
+}
+
 }	// namespace Utility

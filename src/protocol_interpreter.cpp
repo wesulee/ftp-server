@@ -68,13 +68,23 @@ void ProtocolInterpreter::readCallback(const boost::system::error_code& ec, std:
 		resp->append(ResponseString::badSequence, sizeof(ResponseString::badSequence)-1);
 		break;
 	case Command::Name::FEAT:
-		if (!resp->getCmd().getArg().empty()) {
+		if (resp->getCmd().getArg().empty()) {
+			resp->setCode(ReturnCode::systemStatus);
+			resp->set(getFeaturesResp());
+		}
+		else {
 			resp->setCode(ReturnCode::argumentSyntaxError);
 			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
 		}
+		break;
+	case Command::Name::PWD:
+		if (resp->getCmd().getArg().empty()) {
+			resp->setCode(ReturnCode::pathnameCreated);
+			resp->append(Utility::quote(session.getCWD().pwd(session.getUser()->home)));
+		}
 		else {
-			resp->setCode(ReturnCode::systemStatus);
-			resp->set(getFeaturesResp());
+			resp->setCode(ReturnCode::argumentSyntaxError);
+			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
 		}
 		break;
 	default:

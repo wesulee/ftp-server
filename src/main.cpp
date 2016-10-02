@@ -6,6 +6,8 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#define BOOST_FILESYSTEM_NO_DEPRECATED
+#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
 
@@ -59,12 +61,15 @@ static bool procArgs(const int argc, char** argv) {
 static void initServer() {
 	ConfigData config = ConfigData::read(Constants::configName);
 	std::vector<User> users;
+	User tmpUser;
+	users.reserve(config.getUsers().size());
 	for (const auto& user : config.getUsers()) {
-		users.emplace_back();
-		users.back().pass = MD5Digest{user.passHash};
-		users.back().name = user.name;
-		users.back().salt = user.passSalt;
-		users.back().home = user.homeDir;
+		tmpUser.pass = MD5Digest{user.passHash};
+		tmpUser.name = user.name;
+		tmpUser.salt = user.passSalt;
+		// throws boost::filesystem::filesystem_error if path does not exist
+		tmpUser.home = boost::filesystem::canonical(user.homeDir);
+		users.push_back(tmpUser);
 	}
 	Server::instance().reset(new Server{
 		config.getPort(),

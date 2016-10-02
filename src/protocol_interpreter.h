@@ -34,10 +34,8 @@ private:
 	void readCallback(const boost::system::error_code&, std::size_t, std::shared_ptr<LoginData>);
 	void writeCallback(const AsioData&, std::shared_ptr<Response>, std::shared_ptr<LoginData>);
 	bool updateReadInput(std::size_t);
-	void setOutputBuffer(const int, const char*, const std::size_t);
 	void readSome(void);
 	void readSome(std::shared_ptr<LoginData>);
-	void write(std::shared_ptr<LoginData>);
 	static std::string getFeaturesResp(void);
 
 	Session& session;
