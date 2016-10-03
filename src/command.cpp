@@ -3,7 +3,7 @@
 
 std::unordered_map<std::string, Command::Name> Command::nameMap = {
 	{"USER", Name::USER}, {"PASS", Name::PASS}, {"FEAT", Name::FEAT},
-	{"PWD", Name::PWD}
+	{"PWD", Name::PWD}, {"TYPE", Name::TYPE}, {"PASV", Name::PASV}
 };
 
 

@@ -27,6 +27,7 @@ public:
 	void addSession(std::shared_ptr<Session>&);
 	void removeSession(std::shared_ptr<Session>&);
 	User* getUser(const std::string&, const std::string&);
+	boost::asio::io_service& getService(void);
 private:
 	void acceptCallback(const boost::system::error_code&, std::shared_ptr<Session>);
 
@@ -52,4 +53,10 @@ std::shared_ptr<Server>& Server::instance() {
 inline
 const std::string& Server::getWelcomeMessage() const {
 	return welcomeMessage;
+}
+
+
+inline
+boost::asio::io_service& Server::getService() {
+	return ios;
 }

@@ -41,7 +41,9 @@ x4x Unspecified
 x5x File system
 */
 namespace ReturnCode {
+	constexpr int commandOkay = 200;
 	constexpr int systemStatus = 211;
+	constexpr int enterPassiveMode = 227;
 	constexpr int loggedIn = 230;
 	constexpr int pathnameCreated = 257;	// success of MKD or PWD
 	constexpr int userOkNeedPass = 331;

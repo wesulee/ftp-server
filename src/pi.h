@@ -13,7 +13,8 @@ class Session;
 class User;
 
 
-class ProtocolInterpreter {
+// Protocol interpreter
+class PI {
 	struct LoginData {
 		enum class State {READ_USER, RESP_USER, READ_PASS, RESP_PASS};
 
@@ -23,9 +24,10 @@ class ProtocolInterpreter {
 		User* user = nullptr;
 	};
 public:
-	ProtocolInterpreter(Session&);
-	~ProtocolInterpreter() = default;
+	PI(Session&);
+	~PI() = default;
 	void begin(void);
+	void resume(void);
 	Buffer& getOutputBuffer(void);
 private:
 	std::shared_ptr<Response> makeResponse(void);
@@ -45,7 +47,14 @@ private:
 };
 
 
+// continue
 inline
-Buffer& ProtocolInterpreter::getOutputBuffer() {
+void PI::resume() {
+	readSome();
+}
+
+
+inline
+Buffer& PI::getOutputBuffer() {
 	return outputBuffer;
 }

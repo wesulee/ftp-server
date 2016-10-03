@@ -1,5 +1,6 @@
-#include "protocol_interpreter.h"
+#include "pi.h"
 #include "asio_data.h"
+#include "representation_type.h"
 #include "response.h"
 #include "server.h"
 #include "session.h"
@@ -7,14 +8,40 @@
 #include <algorithm>	// copy
 #include <cassert>
 #include <stdexcept>
+#include <utility>	// pair
 
 
-ProtocolInterpreter::ProtocolInterpreter(Session& s) : session{s} {
+namespace PIHelper {
+
+static std::pair<RepresentationType, bool> parseReprType(const std::string& type) {
+	std::pair<RepresentationType, bool> ret;
+	ret.second = false;		// default value
+	if (type.size() == 1) {
+		switch (type[0]) {
+		case 'A':
+			ret.first = RepresentationType::ASCII;
+			ret.second = true;
+			break;
+		case 'I':
+			ret.first = RepresentationType::IMAGE;
+			ret.second = true;
+			break;
+		default:
+			break;
+		}
+	}
+	return ret;
+}
+
+}	// namespace PIHelper
+
+
+PI::PI(Session& s) : session{s} {
 }
 
 
 // Send 220 "Ready" reply
-void ProtocolInterpreter::begin() {
+void PI::begin() {
 	std::shared_ptr<LoginData> data{new LoginData};
 	std::shared_ptr<Response> resp{new Response{session}};
 	resp->setCode(220);
@@ -30,14 +57,14 @@ void ProtocolInterpreter::begin() {
 }
 
 
-std::shared_ptr<Response> ProtocolInterpreter::makeResponse() {
+std::shared_ptr<Response> PI::makeResponse() {
 	std::shared_ptr<Response> resp{new Response{session, cmdStr}};
 	cmdStr.clear();
 	return resp;
 }
 
 
-void ProtocolInterpreter::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
+void PI::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 	if (ec.value() != 0) {
 		// TODO
 		return;
@@ -87,6 +114,42 @@ void ProtocolInterpreter::readCallback(const boost::system::error_code& ec, std:
 			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
 		}
 		break;
+	case Command::Name::TYPE:
+		{
+			const std::pair<RepresentationType, bool> reprType = PIHelper::parseReprType(
+				resp->getCmd().getArg()
+			);
+			if (reprType.second) {
+				session.setRepresentationType(reprType.first);
+				resp->setCode(ReturnCode::commandOkay);
+				resp->append("Switching to ");
+				switch (reprType.first) {
+				case RepresentationType::ASCII:
+					resp->append("ASCII");
+					break;
+				case RepresentationType::IMAGE:
+					resp->append("binary");
+					break;
+				}
+				resp->append(" mode.");
+			}
+			else {
+				resp->setCode(ReturnCode::syntaxError);
+				resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
+			}
+		}
+		break;
+	case Command::Name::PASV:
+		if (resp->getCmd().getArg().empty()) {
+			resp->setCode(ReturnCode::enterPassiveMode);
+			session.passiveBegin(resp);
+			// response message will be set by above call
+		}
+		else {
+			resp->setCode(ReturnCode::argumentSyntaxError);
+			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
+		}
+		break;
 	default:
 		break;
 	}
@@ -94,7 +157,7 @@ void ProtocolInterpreter::readCallback(const boost::system::error_code& ec, std:
 }
 
 
-void ProtocolInterpreter::writeCallback(const AsioData& asioData, std::shared_ptr<Response> resp) {
+void PI::writeCallback(const AsioData& asioData, std::shared_ptr<Response> resp) {
 	if (asioData.ec.value() != 0) {
 		// TODO
 		return;
@@ -103,11 +166,20 @@ void ProtocolInterpreter::writeCallback(const AsioData& asioData, std::shared_pt
 		resp->writeSome();
 		return;
 	}
-	readSome();
+	switch (resp->getCmd().getName()) {
+	case Command::Name::PASV:
+		// DTP has set up acceptor and is already listening.
+		// Accept the expected incoming connection.
+		session.passiveAccept();
+		break;
+	default:
+		readSome();
+		break;
+	}
 }
 
 
-void ProtocolInterpreter::readCallback(const boost::system::error_code& ec,
+void PI::readCallback(const boost::system::error_code& ec,
 std::size_t nBytes, std::shared_ptr<LoginData> data) {
 	if (ec.value() != 0) {
 		// TODO
@@ -176,7 +248,7 @@ std::size_t nBytes, std::shared_ptr<LoginData> data) {
 }
 
 
-void ProtocolInterpreter::writeCallback(const AsioData& asioData, std::shared_ptr<Response> resp,
+void PI::writeCallback(const AsioData& asioData, std::shared_ptr<Response> resp,
 std::shared_ptr<LoginData> data) {
 	if (asioData.ec.value() != 0) {
 		// TODO
@@ -217,7 +289,7 @@ std::shared_ptr<LoginData> data) {
 // Returns true if there is a command read. When this happens,
 //   cmdStr will contain the complete command and inputBuffer's
 //   contents will be cleared of the command read.
-bool ProtocolInterpreter::updateReadInput(std::size_t nBytes) {
+bool PI::updateReadInput(std::size_t nBytes) {
 	bool retVal = false;	// EOL flag
 	// check if input buffer contains a finished command
 	const std::size_t newBufSz = (inputBuffer.sz + nBytes);
@@ -271,7 +343,7 @@ bool ProtocolInterpreter::updateReadInput(std::size_t nBytes) {
 }
 
 
-void ProtocolInterpreter::readSome() {
+void PI::readSome() {
 	session.getPISocket().async_read_some(
 		boost::asio::buffer(
 			inputBuffer.buf.data() + inputBuffer.size(),
@@ -284,7 +356,7 @@ void ProtocolInterpreter::readSome() {
 }
 
 
-void ProtocolInterpreter::readSome(std::shared_ptr<LoginData> data) {
+void PI::readSome(std::shared_ptr<LoginData> data) {
 	session.getPISocket().async_read_some(
 		boost::asio::buffer(
 			inputBuffer.buf.data() + inputBuffer.size(),
@@ -298,7 +370,7 @@ void ProtocolInterpreter::readSome(std::shared_ptr<LoginData> data) {
 
 
 // https://tools.ietf.org/html/rfc2389
-std::string ProtocolInterpreter::getFeaturesResp() {
+std::string PI::getFeaturesResp() {
 	std::string str{"211-Features"};
 	str.append(Constants::EOL);
 	for (const auto feat : Constants::features) {

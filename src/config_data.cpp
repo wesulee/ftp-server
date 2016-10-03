@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <thread>	// hardware_concurrency
 #include <utility>	// pair
 #define BOOST_FILESYSTEM_NO_DEPRECATED
 #include <boost/filesystem.hpp>
@@ -18,7 +19,6 @@ namespace ConfigDataDefaults {
 	constexpr char name[] = "anonymous";
 	constexpr char homeDir[] = "public_ftp";
 	constexpr int serverPort = 21;
-	constexpr int numServerThreads = 2;
 	constexpr int saltLength = 16;
 }
 
@@ -141,7 +141,7 @@ void writeUser(YAML::Emitter& out, const ConfigData::User& user) {
 ConfigData ConfigData::getDefault() {
 	ConfigData data;
 	data.port = ConfigDataDefaults::serverPort;
-	data.numThreads = ConfigDataDefaults::numServerThreads;
+	data.numThreads = static_cast<int>(std::thread::hardware_concurrency());
 	data.passSaltLen = ConfigDataDefaults::saltLength;
 	data.welcomeMessage = ConfigDataDefaults::welcomeMessage;
 	data.users.emplace_back();

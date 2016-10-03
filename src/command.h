@@ -6,7 +6,7 @@
 
 class Command {
 public:
-	enum class Name {_NONE, _INVALID, USER, PASS, FEAT, PWD};
+	enum class Name {_NONE, _INVALID, USER, PASS, FEAT, PWD, TYPE, PASV};
 
 	Command();
 	Command(const Command&) = default;
