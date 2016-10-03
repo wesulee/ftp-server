@@ -134,6 +134,7 @@ User* Server::getUser(const std::string& user, const std::string& pass) {
 void Server::acceptCallback(const boost::system::error_code& ec, std::shared_ptr<Session> s) {
 	if (ec.value() != 0) {
 		// TODO
+		assert(false);
 	}
 	else {
 		addSession(s);

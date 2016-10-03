@@ -26,6 +26,11 @@ void Session::setRepresentationType(const RepresentationType reprType) {
 }
 
 
+void Session::closeDataConnection() {
+	dtp.closeConnection();
+}
+
+
 // start the process of enabling passive mode
 void Session::passiveBegin(std::shared_ptr<Response> resp) {
 	dtp.enablePassiveMode(resp);
@@ -41,4 +46,9 @@ void Session::passiveAccept() {
 // notification that pasive mode enabled
 void Session::passiveEnabled() {
 	pi.resume();
+}
+
+
+void Session::setMLSDWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
+	dtp.setMLSDWriter(dataResp, p);
 }

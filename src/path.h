@@ -13,6 +13,13 @@ public:
 	Path(const Path&) = default;
 	~Path() = default;
 	std::string pwd(const boost::filesystem::path&) const;
+	const boost::filesystem::path& getBoostPath(void) const;
 private:
 	boost::filesystem::path path;
 };
+
+
+inline
+const boost::filesystem::path& Path::getBoostPath() const {
+	return path;
+}

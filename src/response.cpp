@@ -72,16 +72,29 @@ void Response::send() {
 
 
 void Response::writeSome() {
-	auto thisShared = getptr();
+	auto thisShared = getPtr();
 	session.getPISocket().async_write_some(
 		boost::asio::buffer(
-			outputBuffer.buf.data() + bufIndex,
+			outputBuffer.data() + bufIndex,
 			outputBuffer.size() - bufIndex
 		),
 		[thisShared, this](const boost::system::error_code& ec, std::size_t nBytes) {
 			asioCallback(ec, nBytes);
 		}
 	);
+}
+
+
+// clear the output, allowing for reuse
+void Response::clear() {
+	outputBuffer.clear();
+	respTmp.clear();
+	bufIndex = 0;
+	bytesSent = 0;
+	outputSz = 0;
+	code = 0;
+	doneFlag = false;
+	format = true;
 }
 
 
@@ -185,5 +198,5 @@ void Response::asioCallback(const boost::system::error_code& ec, std::size_t nBy
 	else {
 		// nothing to do
 	}
-	callback(AsioData{ec, nBytes}, getptr());
+	callback(AsioData{ec, nBytes}, getPtr());
 }

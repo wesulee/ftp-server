@@ -8,6 +8,7 @@
 #include <boost/asio.hpp>
 
 
+class DataWriter;
 enum class RepresentationType;
 class Response;
 class User;
@@ -26,9 +27,11 @@ public:
 	User* getUser(void);
 	const Path& getCWD(void) const;
 	void setRepresentationType(const RepresentationType);
+	void closeDataConnection(void);
 	void passiveBegin(std::shared_ptr<Response>);
 	void passiveAccept(void);
 	void passiveEnabled(void);
+	void setMLSDWriter(std::shared_ptr<DataResponse>&, const Path&);
 private:
 	boost::asio::ip::tcp::socket socketPI;
 	boost::asio::ip::tcp::socket socketDTP;

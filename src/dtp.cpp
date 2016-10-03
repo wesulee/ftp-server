@@ -1,5 +1,8 @@
 #include "dtp.h"
-
+#include "asio_data.h"
+#include "data_response.h"
+#include "mlsd_writer.h"
+#include "path.h"
 #include "response.h"
 #include "server.h"
 #include "session.h"
@@ -38,8 +41,15 @@ DTP::DTP(Session& sess)
 }
 
 
+void DTP::closeConnection() {
+	assert(mode != Mode::_NONE);
+	session.getDTPSocket().close();
+	mode = Mode::_NONE;
+}
+
+
 void DTP::enablePassiveMode(std::shared_ptr<Response> resp) {
-	assert(!acceptor);
+	// TODO reuse acceptor
 	acceptor.reset(new boost::asio::ip::tcp::acceptor{Server::instance()->getService()});
 	const auto localAddress = session.getPISocket().local_endpoint().address();
 	assert(localAddress.is_v4());
@@ -65,9 +75,37 @@ void DTP::passiveAccept() {
 }
 
 
+void DTP::setMLSDWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
+	// TODO catch exceptions
+	dataResp->dataWriter = std::shared_ptr<DataWriter>{
+		new MLSDWriter{session, *dataResp, p}
+	};
+	dataResp->dataWriter->setWriteCallback(
+		[this](const AsioData& asioData, std::shared_ptr<DataResponse> dataResp2) {
+			writeCallback(asioData, dataResp2);
+		}
+	);
+	// PI will set appropriate finish callback
+}
+
+
+void DTP::writeCallback(const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+	if (asioData.ec.value() != 0) {
+		dataResp->dataWriter->finish(asioData);
+	}
+	else if (!dataResp->dataWriter->done()) {
+		dataResp->dataWriter->writeSome();
+	}
+	else {
+		dataResp->dataWriter->finish(asioData);
+	}
+}
+
+
 void DTP::acceptCallback(const boost::system::error_code& ec, std::shared_ptr<socket_type> sock) {
 	if (ec.value() != 0) {
 		// TODO
+		assert(false);
 		return;
 	}
 	if (sock->remote_endpoint().address() != session.getPISocket().remote_endpoint().address()) {
@@ -81,4 +119,3 @@ void DTP::acceptCallback(const boost::system::error_code& ec, std::shared_ptr<so
 		session.passiveEnabled();
 	}
 }
-

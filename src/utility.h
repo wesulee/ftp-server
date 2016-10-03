@@ -10,7 +10,7 @@ namespace Constants {
 	constexpr char EOL[] = "\r\n";	// CR LF
 	constexpr char SP[] = " ";
 	constexpr std::size_t CMD_BUF_SZ = 2048;
-	constexpr std::array<const char*, 1> features = {"PASV"};	// TODO support PASV
+	constexpr std::array<const char*, 2> features = {"PASV", "MLSD"};
 }
 
 
@@ -23,6 +23,9 @@ namespace ResponseString {
 	constexpr char cannotChangeUser[] = "Cannot change user.";
 	constexpr char badSequence[] = "Bad sequence of commands.";
 	constexpr char invalidCmd[] = "Invalid command.";
+	constexpr char reqDataConnection[] = "Use PORT or PASV first.";
+	constexpr char incomingDirList[] = "Here comes the directory listing.";
+	constexpr char dirListSuccess[] = "Directory send OK.";
 }
 
 
@@ -41,12 +44,15 @@ x4x Unspecified
 x5x File system
 */
 namespace ReturnCode {
+	constexpr int fileOkayDataConn = 150;	// File status okay; about to open data connection.
 	constexpr int commandOkay = 200;
 	constexpr int systemStatus = 211;
+	constexpr int closeDataConn = 226;	// Closing data connection. Requested file action successful.
 	constexpr int enterPassiveMode = 227;
 	constexpr int loggedIn = 230;
 	constexpr int pathnameCreated = 257;	// success of MKD or PWD
 	constexpr int userOkNeedPass = 331;
+	constexpr int noDataConnection = 425;
 	constexpr int syntaxError = 500;	// or unknown command
 	constexpr int argumentSyntaxError = 501;
 	constexpr int badSequence = 503;	// Bad sequence of commands

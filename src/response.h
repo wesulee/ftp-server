@@ -31,12 +31,13 @@ public:
 	void send(void);
 	void writeSome(void);
 	bool done(void) const;
+	void clear(void);
 private:
-	std::shared_ptr<Response> getptr(void);
+	std::shared_ptr<Response> getPtr(void);
 	void append2(const char*, const std::size_t);
 	void finalize(void);
 	void updateEOL(void);
-	void asioCallback(const boost::system::error_code& ec, std::size_t nBytes);
+	void asioCallback(const boost::system::error_code&, std::size_t);
 
 	Command command;
 	Callback callback;
@@ -96,6 +97,6 @@ bool Response::done() const {
 
 
 inline
-std::shared_ptr<Response> Response::getptr() {
+std::shared_ptr<Response> Response::getPtr() {
 	return shared_from_this();
 }

@@ -4,10 +4,12 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <vector>
 #include <boost/asio.hpp>
 
 
 class AsioData;
+class DataResponse;
 class Response;
 class Session;
 class User;
@@ -31,10 +33,13 @@ public:
 	Buffer& getOutputBuffer(void);
 private:
 	std::shared_ptr<Response> makeResponse(void);
+	void setDefaultCallback(std::shared_ptr<Response>&);
 	void readCallback(const boost::system::error_code&, std::size_t);
 	void writeCallback(const AsioData&, std::shared_ptr<Response>);
 	void readCallback(const boost::system::error_code&, std::size_t, std::shared_ptr<LoginData>);
 	void writeCallback(const AsioData&, std::shared_ptr<Response>, std::shared_ptr<LoginData>);
+	void writeCallback(const AsioData&, std::shared_ptr<DataResponse>);
+	void finishCallback(const AsioData&, std::shared_ptr<DataResponse>);
 	bool updateReadInput(std::size_t);
 	void readSome(void);
 	void readSome(std::shared_ptr<LoginData>);
