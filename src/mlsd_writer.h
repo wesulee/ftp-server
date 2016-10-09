@@ -1,7 +1,6 @@
 #pragma once
 
 #include "data_writer.h"
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,6 +14,7 @@ public:
 	MLSDWriter(Session&, DataResponse&, const Path&);
 	~MLSDWriter() = default;
 	void send(void) override;
+	bool good(void) const override;
 	void writeSome(void) override;
 	bool done(void) const override;
 	void finish(const AsioData&) override;

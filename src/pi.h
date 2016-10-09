@@ -4,12 +4,12 @@
 #include <array>
 #include <memory>
 #include <string>
-#include <vector>
 #include <boost/asio.hpp>
 
 
 class AsioData;
 class DataResponse;
+class DataWriter;
 class Response;
 class Session;
 class User;
@@ -34,6 +34,7 @@ public:
 private:
 	std::shared_ptr<Response> makeResponse(void);
 	void setDefaultCallback(std::shared_ptr<Response>&);
+	void setDefaultFinishCallback(std::shared_ptr<DataWriter>&);
 	void readCallback(const boost::system::error_code&, std::size_t);
 	void writeCallback(const AsioData&, std::shared_ptr<Response>);
 	void readCallback(const boost::system::error_code&, std::size_t, std::shared_ptr<LoginData>);

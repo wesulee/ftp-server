@@ -15,6 +15,8 @@ struct Buffer {
 	std::string str(void) const;
 	bool full(void) const;
 	constexpr std::size_t capacity(void) const;
+	void setSize(const std::size_t);
+	char* data(void);
 	const char* data(void) const;
 	const char& operator[](const std::size_t) const;
 
@@ -62,6 +64,18 @@ bool Buffer::full() const {
 inline
 constexpr std::size_t Buffer::capacity() const {
 	return buf.size();
+}
+
+
+inline
+void Buffer::setSize(const std::size_t n) {
+	sz = n;
+}
+
+
+inline
+char* Buffer::data() {
+	return buf.data();
 }
 
 

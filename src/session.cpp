@@ -17,7 +17,7 @@ Session::~Session() {
 void Session::setUser(User* usr) {
 	assert(usr != nullptr);
 	user = usr;
-	cwd = Path{user->home};
+	cwd = user->home;
 }
 
 
@@ -51,4 +51,9 @@ void Session::passiveEnabled() {
 
 void Session::setMLSDWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
 	dtp.setMLSDWriter(dataResp, p);
+}
+
+
+void Session::setFileWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
+	dtp.setFileWriter(dataResp, p);
 }

@@ -1,6 +1,7 @@
 #include "dtp.h"
 #include "asio_data.h"
 #include "data_response.h"
+#include "file_writer.h"
 #include "mlsd_writer.h"
 #include "path.h"
 #include "response.h"
@@ -50,7 +51,7 @@ void DTP::closeConnection() {
 
 void DTP::enablePassiveMode(std::shared_ptr<Response> resp) {
 	// TODO reuse acceptor
-	acceptor.reset(new boost::asio::ip::tcp::acceptor{Server::instance()->getService()});
+	acceptor.reset(new acceptor_type{Server::instance()->getService()});
 	const auto localAddress = session.getPISocket().local_endpoint().address();
 	assert(localAddress.is_v4());
 	boost::asio::ip::tcp::endpoint ep{localAddress, 0};
@@ -80,12 +81,38 @@ void DTP::setMLSDWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) 
 	dataResp->dataWriter = std::shared_ptr<DataWriter>{
 		new MLSDWriter{session, *dataResp, p}
 	};
-	dataResp->dataWriter->setWriteCallback(
-		[this](const AsioData& asioData, std::shared_ptr<DataResponse> dataResp2) {
-			writeCallback(asioData, dataResp2);
+	setDefaultWriteCallback(dataResp->dataWriter);
+	// PI will set appropriate finish callback
+}
+
+
+void DTP::setFileWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
+	switch (mode) {
+	case Mode::_NONE:
+		// PI should have checked if data connection is active
+		assert(false);
+		break;
+	case Mode::ACTIVE:
+		// TODO not implemented
+		assert(false);
+		break;
+	case Mode::PASSIVE:
+		dataResp->dataWriter = std::shared_ptr<DataWriter>{
+			new FileWriter{session, *dataResp, p}
+		};
+		setDefaultWriteCallback(dataResp->dataWriter);
+		// PI will set appropriate finish callback
+		break;
+	}
+}
+
+
+void DTP::setDefaultWriteCallback(std::shared_ptr<DataWriter>& writer) {
+	writer->setWriteCallback(
+		[this](const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+			writeCallback(asioData, dataResp);
 		}
 	);
-	// PI will set appropriate finish callback
 }
 
 

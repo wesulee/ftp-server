@@ -10,6 +10,7 @@ namespace Constants {
 	constexpr char EOL[] = "\r\n";	// CR LF
 	constexpr char SP[] = " ";
 	constexpr std::size_t CMD_BUF_SZ = 2048;
+	constexpr std::size_t FILE_BUF_SZ = (64 * 1024);
 	constexpr std::array<const char*, 2> features = {"PASV", "MLSD"};
 }
 
@@ -26,6 +27,8 @@ namespace ResponseString {
 	constexpr char reqDataConnection[] = "Use PORT or PASV first.";
 	constexpr char incomingDirList[] = "Here comes the directory listing.";
 	constexpr char dirListSuccess[] = "Directory send OK.";
+	constexpr char cannotOpenFile[] = "Failed to open file.";
+	constexpr char transComplete[] = "Transfer complete.";
 }
 
 
@@ -47,6 +50,7 @@ namespace ReturnCode {
 	constexpr int fileOkayDataConn = 150;	// File status okay; about to open data connection.
 	constexpr int commandOkay = 200;
 	constexpr int systemStatus = 211;
+	constexpr int serviceReady = 220;
 	constexpr int closeDataConn = 226;	// Closing data connection. Requested file action successful.
 	constexpr int enterPassiveMode = 227;
 	constexpr int loggedIn = 230;
@@ -57,6 +61,7 @@ namespace ReturnCode {
 	constexpr int argumentSyntaxError = 501;
 	constexpr int badSequence = 503;	// Bad sequence of commands
 	constexpr int notLoggedIn = 530;
+	constexpr int fileUnavailable = 550;
 }
 
 

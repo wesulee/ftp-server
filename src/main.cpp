@@ -1,4 +1,5 @@
 #include "config_data.h"
+#include "path.h"
 #include "server.h"
 #include "user.h"
 #include "utility.h"
@@ -6,8 +7,6 @@
 #include <iostream>
 #include <limits>
 #include <string>
-#define BOOST_FILESYSTEM_NO_DEPRECATED
-#include <boost/filesystem.hpp>
 #include <boost/program_options.hpp>
 
 
@@ -67,8 +66,7 @@ static void initServer() {
 		tmpUser.pass = MD5Digest{user.passHash};
 		tmpUser.name = user.name;
 		tmpUser.salt = user.passSalt;
-		// throws boost::filesystem::filesystem_error if path does not exist
-		tmpUser.home = boost::filesystem::canonical(user.homeDir);
+		tmpUser.home = Path{user.homeDir};
 		users.push_back(tmpUser);
 	}
 	Server::instance().reset(new Server{

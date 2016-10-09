@@ -1,6 +1,4 @@
 #include "mlsd_writer.h"
-#include "asio_data.h"
-#include "data_response.h"
 #include "path.h"
 #include "session.h"
 #include "utility.h"
@@ -149,7 +147,7 @@ MLSDWriter::MLSDWriter(Session& sess, DataResponse& dr, const Path& dirPath)
 			entries.pop_back();
 		}
 		else {
-			// to simply things, append EOL to each entry
+			// to simplify things, append EOL to each entry
 			entries.back().append(Constants::EOL);
 		}
 	}
@@ -161,6 +159,11 @@ void MLSDWriter::send() {
 	assert(!entries.empty());
 	setupEntry();
 	writeSome();
+}
+
+
+bool MLSDWriter::good() const {
+	return !entries.empty();
 }
 
 
@@ -239,5 +242,5 @@ void MLSDWriter::asioCallback(const boost::system::error_code& ec, std::size_t n
 		// still not finished writing contents of current entry in outputBuffer
 		// do nothing
 	}
-	writeCallback(AsioData{ec, nBytes}, dataResp.getPtr());
+	doWriteCallback(ec, nBytes);
 }
