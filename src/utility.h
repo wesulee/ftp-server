@@ -29,6 +29,7 @@ namespace ResponseString {
 	constexpr char dirListSuccess[] = "Directory send OK.";
 	constexpr char cannotOpenFile[] = "Failed to open file.";
 	constexpr char transComplete[] = "Transfer complete.";
+	constexpr char systResponse[] = "UNIX emulated";
 }
 
 
@@ -50,6 +51,7 @@ namespace ReturnCode {
 	constexpr int fileOkayDataConn = 150;	// File status okay; about to open data connection.
 	constexpr int commandOkay = 200;
 	constexpr int systemStatus = 211;
+	constexpr int systemType = 215;
 	constexpr int serviceReady = 220;
 	constexpr int closeDataConn = 226;	// Closing data connection. Requested file action successful.
 	constexpr int enterPassiveMode = 227;

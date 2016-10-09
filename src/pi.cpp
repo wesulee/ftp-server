@@ -246,6 +246,16 @@ void PI::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 			resp->append(reqPath.first.fileName());
 		}
 		break;
+	case Command::Name::SYST:
+		if (resp->getCmd().getArg().empty()) {
+			resp->setCode(ReturnCode::systemType);
+			resp->append(ResponseString::systResponse, sizeof(ResponseString::systResponse)-1);
+		}
+		else {
+			resp->setCode(ReturnCode::argumentSyntaxError);
+			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
+		}
+		break;
 	default:
 		break;
 	}
