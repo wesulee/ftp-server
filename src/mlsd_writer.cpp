@@ -1,4 +1,5 @@
 #include "mlsd_writer.h"
+#include "data_response.h"
 #include "path.h"
 #include "session.h"
 #include "utility.h"
@@ -136,8 +137,8 @@ static std::string genEntry(const fs::directory_entry& entry) {
 }	// namespace MLSDUtil
 
 
-MLSDWriter::MLSDWriter(Session& sess, DataResponse& dr, const Path& dirPath)
-: DataWriter{sess, dr}, entriesIndex{0}, doneFlag{false} {
+MLSDWriter::MLSDWriter(DataResponse& dr, const Path& dirPath)
+: DataWriter{dr}, entriesIndex{0}, doneFlag{false} {
 	fs::directory_iterator it{dirPath.getBoostPath()};
 	fs::directory_iterator end;
 	// deferrencing it returns type const fs::directory_entry&
@@ -168,7 +169,7 @@ bool MLSDWriter::good() const {
 
 
 void MLSDWriter::writeSome() {
-	session.getDTPSocket().async_write_some(
+	dataResp.session.getDTPSocket().async_write_some(
 		boost::asio::buffer(
 			outputBuffer.data() + bufIndex,
 			outputBuffer.size() - bufIndex

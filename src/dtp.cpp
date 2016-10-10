@@ -1,6 +1,7 @@
 #include "dtp.h"
 #include "asio_data.h"
 #include "data_response.h"
+#include "file_reader.h"
 #include "file_writer.h"
 #include "mlsd_writer.h"
 #include "path.h"
@@ -79,7 +80,7 @@ void DTP::passiveAccept() {
 void DTP::setMLSDWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
 	// TODO catch exceptions
 	dataResp->dataWriter = std::shared_ptr<DataWriter>{
-		new MLSDWriter{session, *dataResp, p}
+		new MLSDWriter{*dataResp, p}
 	};
 	setDefaultWriteCallback(dataResp->dataWriter);
 	// PI will set appropriate finish callback
@@ -98,12 +99,21 @@ void DTP::setFileWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) 
 		break;
 	case Mode::PASSIVE:
 		dataResp->dataWriter = std::shared_ptr<DataWriter>{
-			new FileWriter{session, *dataResp, p}
+			new FileWriter{*dataResp, p}
 		};
 		setDefaultWriteCallback(dataResp->dataWriter);
 		// PI will set appropriate finish callback
 		break;
 	}
+}
+
+
+void DTP::setFileReader(std::shared_ptr<DataResponse>& dataResp, const Path& p,
+const std::string& name) {
+	dataResp->dataReader = std::shared_ptr<DataReader>{
+		new FileReader{*dataResp, p, name}
+	};
+	setDefaultReadCallback(dataResp->dataReader);
 }
 
 
@@ -116,8 +126,17 @@ void DTP::setDefaultWriteCallback(std::shared_ptr<DataWriter>& writer) {
 }
 
 
+void DTP::setDefaultReadCallback(std::shared_ptr<DataReader>& reader) {
+	reader->setReadCallback(
+		[this](const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+			readCallback(asioData, dataResp);
+		}
+	);
+}
+
+
 void DTP::writeCallback(const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
-	if (asioData.ec.value() != 0) {
+	if ((asioData.ec.value() != 0) || !dataResp->dataWriter->good()) {
 		dataResp->dataWriter->finish(asioData);
 	}
 	else if (!dataResp->dataWriter->done()) {
@@ -125,6 +144,16 @@ void DTP::writeCallback(const AsioData& asioData, std::shared_ptr<DataResponse> 
 	}
 	else {
 		dataResp->dataWriter->finish(asioData);
+	}
+}
+
+
+void DTP::readCallback(const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+	if ((asioData.ec.value() != 0) || !dataResp->dataReader->good() || dataResp->dataReader->done()) {
+		dataResp->dataReader->finish(asioData);
+	}
+	else {
+		dataResp->dataReader->readSome();
 	}
 }
 

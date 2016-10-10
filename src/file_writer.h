@@ -7,9 +7,10 @@
 
 
 // RETR command
+// Reads a file from filesystem and writes it to data connection.
 class FileWriter : public DataWriter {
 public:
-	FileWriter(Session&, DataResponse&, const Path&);
+	FileWriter(DataResponse&, const Path&);
 	void send(void) override;
 	bool good(void) const override;
 	void writeSome(void) override;

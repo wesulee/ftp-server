@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fstream>
 #include <string>
 #include <utility>
 #define BOOST_FILESYSTEM_NO_DEPRECATED
@@ -17,6 +18,7 @@ public:
 	std::string fileName(void) const;
 	std::string pwd(const Path&) const;
 	std::pair<Path, bool> get(const std::string&) const;
+	std::pair<Path, bool> create(const std::string&, std::ofstream&) const;
 	bool childOf(const Path&) const;
 	bool isFile(void) const;
 	bool isDirectory(void) const;

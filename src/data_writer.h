@@ -8,7 +8,6 @@
 class AsioData;
 class Buffer;
 class DataResponse;
-class Session;
 
 
 // Base class for writing to data connection (does the actual writing).
@@ -37,7 +36,7 @@ class DataWriter {
 public:
 	typedef std::function<void(const AsioData&, std::shared_ptr<DataResponse>)> Callback;
 
-	DataWriter(Session&, DataResponse&);
+	DataWriter(DataResponse&);
 	virtual ~DataWriter() = default;
 	void setWriteCallback(const Callback&);
 	void setFinishCallback(const Callback&);
@@ -47,11 +46,10 @@ public:
 	virtual bool done(void) const = 0;		// successfully finished writing?
 	virtual void finish(const AsioData&);	// called after done() is true, or on error
 protected:
-	void doWriteCallback(const boost::system::error_code& ec, std::size_t nBytes);
+	void doWriteCallback(const boost::system::error_code&, std::size_t);
 
 	Callback writeCallback;
 	Callback finishCallback;
-	Session& session;
 	DataResponse& dataResp;	// the data response associated with this
 	Buffer& outputBuffer;
 	std::size_t bytesSent;

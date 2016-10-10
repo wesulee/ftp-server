@@ -62,9 +62,48 @@ std::pair<Path, bool> Path::get(const std::string& p) const {
 		ret.first = Path{newPath};
 		ret.second = true;
 	}
-	catch (std::exception&) {
+	catch (const std::exception&) {
 		// path most likely does not exist
 		// do nothing
+	}
+	return ret;
+}
+
+
+// Attempts to create a file with this as the base path and name being the desired
+//   filename. this is assumed to be a directory.
+// The provided ofstream should be only default constructed and not modified.
+// create() will attempt to open the file in binary mode.
+// If file successfully opened, the returned ret.second will be true, and
+//   ret.first will be the Path to the created file.
+std::pair<Path, bool> Path::create(const std::string& name, std::ofstream& file) const {
+	assert(isDirectory());
+	std::pair<Path, bool> ret = std::make_pair(Path{}, false);
+	// make sure that name is a valid filename (that is, not an absolute path,
+	//   does not begin with invalid sequence, has no parent path).
+	const fs::path namePath{name};
+	if (name.empty() || !namePath.is_relative() || !namePath.parent_path().string().empty())
+		return ret;
+	if (
+		(name == ".")
+		|| (name == "..")
+		|| (name.substr(0, 2) == "./")
+		|| (name.substr(0, 3) == "../")
+	) {
+		return ret;
+	}
+	// attempt to open file
+	fs::path reqPath = (path / namePath);
+	file.open(reqPath.string(), std::ofstream::binary | std::ofstream::trunc);
+	if (file.is_open()) {
+		try {
+			ret.first = Path{reqPath};
+			ret.second = true;
+			assert(ret.first.childOf(*this));
+		}
+		catch (const std::exception&) {
+			// unable to get Path...
+		}
 	}
 	return ret;
 }

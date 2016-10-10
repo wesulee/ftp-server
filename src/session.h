@@ -32,6 +32,7 @@ public:
 	void passiveEnabled(void);
 	void setMLSDWriter(std::shared_ptr<DataResponse>&, const Path&);
 	void setFileWriter(std::shared_ptr<DataResponse>&, const Path&);
+	void setFileReader(std::shared_ptr<DataResponse>&, const std::string&);
 private:
 	boost::asio::ip::tcp::socket socketPI;
 	boost::asio::ip::tcp::socket socketDTP;

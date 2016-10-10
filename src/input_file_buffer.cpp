@@ -1,9 +1,9 @@
 #include "input_file_buffer.h"
+#include <algorithm>
 #include <cassert>
 
 
 InputFileBuffer::InputFileBuffer() : capacity{0}, file{nullptr} {
-
 }
 
 
@@ -15,6 +15,7 @@ void InputFileBuffer::setFile(std::ifstream* ptr) {
 
 void InputFileBuffer::setCapacity(const std::size_t c) {
 	assert(c > 0);
+	assert(!buf);
 	capacity = c;
 	buf.reset(new char[capacity]);
 }

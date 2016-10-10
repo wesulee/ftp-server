@@ -3,10 +3,12 @@
 #include "buffer.h"
 #include "representation_type.h"
 #include <memory>
+#include <string>
 #include <boost/asio.hpp>
 
 
 class AsioData;
+class DataReader;
 class DataResponse;
 class DataWriter;
 class Path;
@@ -29,10 +31,14 @@ public:
 	void passiveAccept(void);
 	void setMLSDWriter(std::shared_ptr<DataResponse>&, const Path&);
 	void setFileWriter(std::shared_ptr<DataResponse>&, const Path&);
+	void setFileReader(std::shared_ptr<DataResponse>&, const Path&, const std::string&);
+	Buffer& getInputBuffer(void);
 	Buffer& getOutputBuffer(void);
 private:
 	void setDefaultWriteCallback(std::shared_ptr<DataWriter>&);
+	void setDefaultReadCallback(std::shared_ptr<DataReader>&);
 	void writeCallback(const AsioData&, std::shared_ptr<DataResponse>);
+	void readCallback(const AsioData&, std::shared_ptr<DataResponse>);
 	void acceptCallback(const boost::system::error_code&, std::shared_ptr<socket_type>);
 
 	std::unique_ptr<acceptor_type> acceptor;
@@ -47,6 +53,12 @@ private:
 inline
 void DTP::setRepresentationType(const RepresentationType type) {
 	reprType = type;
+}
+
+
+inline
+Buffer& DTP::getInputBuffer() {
+	return inputBuffer;
 }
 
 

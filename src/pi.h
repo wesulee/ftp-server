@@ -8,6 +8,7 @@
 
 
 class AsioData;
+class DataReader;
 class DataResponse;
 class DataWriter;
 class Response;
@@ -35,12 +36,14 @@ private:
 	std::shared_ptr<Response> makeResponse(void);
 	void setDefaultCallback(std::shared_ptr<Response>&);
 	void setDefaultFinishCallback(std::shared_ptr<DataWriter>&);
+	void setDefaultFinishCallback(std::shared_ptr<DataReader>&);
 	void readCallback(const boost::system::error_code&, std::size_t);
 	void writeCallback(const AsioData&, std::shared_ptr<Response>);
 	void readCallback(const boost::system::error_code&, std::size_t, std::shared_ptr<LoginData>);
 	void writeCallback(const AsioData&, std::shared_ptr<Response>, std::shared_ptr<LoginData>);
 	void writeCallback(const AsioData&, std::shared_ptr<DataResponse>);
-	void finishCallback(const AsioData&, std::shared_ptr<DataResponse>);
+	void finishCallbackW(const AsioData&, std::shared_ptr<DataResponse>);
+	void finishCallbackR(const AsioData&, std::shared_ptr<DataResponse>);
 	bool updateReadInput(std::size_t);
 	void readSome(void);
 	void readSome(std::shared_ptr<LoginData>);

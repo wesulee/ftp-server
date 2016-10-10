@@ -7,7 +7,7 @@
 class Command {
 public:
 	enum class Name {
-		_NONE, _INVALID, USER, PASS, FEAT, PWD, TYPE, PASV, MLSD, RETR, SYST
+		_NONE, _INVALID, USER, PASS, FEAT, PWD, TYPE, PASV, MLSD, RETR, SYST, STOR
 	};
 
 	Command();

@@ -11,7 +11,7 @@ class Path;
 // MLSD command
 class MLSDWriter : public DataWriter {
 public:
-	MLSDWriter(Session&, DataResponse&, const Path&);
+	MLSDWriter(DataResponse&, const Path&);
 	~MLSDWriter() = default;
 	void send(void) override;
 	bool good(void) const override;

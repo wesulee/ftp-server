@@ -5,8 +5,8 @@
 #include "session.h"
 
 
-DataWriter::DataWriter(Session& sess, DataResponse& dr)
-: session{sess}, dataResp{dr}, outputBuffer{sess.getDTP().getOutputBuffer()},
+DataWriter::DataWriter(DataResponse& dr)
+: dataResp{dr}, outputBuffer{dr.session.getDTP().getOutputBuffer()},
 bytesSent{0} {
 }
 

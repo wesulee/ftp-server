@@ -4,6 +4,9 @@
 #include "user.h"
 
 
+namespace fs = boost::filesystem;
+
+
 Session::Session(boost::asio::io_service& ios)
 : socketPI{ios}, socketDTP{ios}, pi{*this}, dtp{*this}, user{nullptr} {
 }
@@ -56,4 +59,15 @@ void Session::setMLSDWriter(std::shared_ptr<DataResponse>& dataResp, const Path&
 
 void Session::setFileWriter(std::shared_ptr<DataResponse>& dataResp, const Path& p) {
 	dtp.setFileWriter(dataResp, p);
+}
+
+
+// TODO better path handling
+void Session::setFileReader(std::shared_ptr<DataResponse>& dataResp, const std::string& name) {
+	std::string newName = name;
+	if (!newName.empty() && (newName.front() == '/')) {
+		newName = newName.substr(1);
+	}
+	dtp.setFileReader(dataResp, cwd, newName);
+
 }

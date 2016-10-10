@@ -1,5 +1,6 @@
 #include "pi.h"
 #include "asio_data.h"
+#include "data_reader.h"
 #include "data_response.h"
 #include "data_writer.h"
 #include "path.h"
@@ -80,7 +81,16 @@ void PI::setDefaultCallback(std::shared_ptr<Response>& resp) {
 void PI::setDefaultFinishCallback(std::shared_ptr<DataWriter>& writer) {
 	writer->setFinishCallback(
 		[this](const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
-			finishCallback(asioData, dataResp);
+			finishCallbackW(asioData, dataResp);
+		}
+	);
+}
+
+
+void PI::setDefaultFinishCallback(std::shared_ptr<DataReader>& reader) {
+	reader->setFinishCallback(
+		[this](const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+			finishCallbackR(asioData, dataResp);
 		}
 	);
 }
@@ -177,7 +187,7 @@ void PI::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 		}
 		else if (resp->getCmd().getArg().empty()) {
 			// print cwd listing
-			std::shared_ptr<DataResponse> dataResp{new DataResponse};
+			std::shared_ptr<DataResponse> dataResp{new DataResponse{session}};
 			dataResp->cmdResp = resp;
 			session.setMLSDWriter(dataResp, session.getCWD());
 			if (!dataResp->dataWriter || !dataResp->dataWriter->good()) {
@@ -225,7 +235,7 @@ void PI::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 				break;
 			}
 			// valid file requested
-			std::shared_ptr<DataResponse> dataResp{new DataResponse};
+			std::shared_ptr<DataResponse> dataResp{new DataResponse{session}};
 			dataResp->cmdResp = resp;
 			session.setFileWriter(dataResp, reqPath.first);
 			if (!dataResp->dataWriter || !dataResp->dataWriter->good()) {
@@ -244,6 +254,39 @@ void PI::readCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 			resp->setCode(ReturnCode::fileOkayDataConn);
 			resp->append("Opening data connection for ");
 			resp->append(reqPath.first.fileName());
+		}
+		break;
+	case Command::Name::STOR:
+		if (resp->getCmd().getArg().empty()) {
+			resp->setCode(ReturnCode::argumentSyntaxError);
+			resp->append(ResponseString::invalidCmd, sizeof(ResponseString::invalidCmd)-1);
+		}
+		else if (!session.getDTPSocket().is_open()) {
+			resp->setCode(ReturnCode::noDataConnection);
+			resp->append(ResponseString::reqDataConnection, sizeof(ResponseString::reqDataConnection)-1);
+		}
+		else {
+			std::shared_ptr<DataResponse> dataResp{new DataResponse{session}};
+			dataResp->cmdResp = resp;
+			session.setFileReader(dataResp, resp->getCmd().getArg());
+			// DTP should have set the readCallback of dataResp
+			// PI should set the finish callback
+			if (!dataResp->dataReader || !dataResp->dataReader->good()) {
+				session.closeDataConnection();
+				resp->setCode(ReturnCode::fileUnavailable);
+				resp->append(ResponseString::cannotOpenFile, sizeof(ResponseString::cannotOpenFile)-1);
+				break;
+			}
+			setDefaultFinishCallback(dataResp->dataReader);
+			resp->setCallback(
+				[this, dataResp](const AsioData& asioData, std::shared_ptr<Response> resp2) {
+					(void)resp2;	// dataResp already contains associated Response
+					writeCallback(asioData, dataResp);
+				}
+			);
+			resp->setCode(ReturnCode::fileOkayDataConn);
+			resp->append("Opening data connection for ");
+			resp->append(resp->getCmd().getArg());	// TODO escape
 		}
 		break;
 	case Command::Name::SYST:
@@ -413,6 +456,10 @@ void PI::writeCallback(const AsioData& asioData, std::shared_ptr<DataResponse> d
 		// Initial response to RETR has been sent. Now send file.
 		dataResp->dataWriter->send();
 		break;
+	case Command::Name::STOR:
+		// Initial response to STOR has been sent. Now receive file.
+		dataResp->dataReader->receive();
+		break;
 	default:
 		assert(false);
 		break;
@@ -420,7 +467,7 @@ void PI::writeCallback(const AsioData& asioData, std::shared_ptr<DataResponse> d
 }
 
 
-void PI::finishCallback(const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+void PI::finishCallbackW(const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
 	if ((asioData.ec.value() != 0) || !dataResp->dataWriter->done()) {
 		// TODO
 		assert(false);
@@ -442,6 +489,36 @@ void PI::finishCallback(const AsioData& asioData, std::shared_ptr<DataResponse> 
 		}
 		break;
 	case Command::Name::RETR:
+		session.closeDataConnection();
+		{
+			std::shared_ptr<Response> resp = dataResp->cmdResp;
+			resp->clear();
+			setDefaultCallback(resp);
+			resp->setCode(ReturnCode::closeDataConn);
+			resp->append(ResponseString::transComplete, sizeof(ResponseString::transComplete)-1);
+			resp->send();
+		}
+		break;
+	default:
+		assert(false);
+		break;
+	}
+}
+
+
+void PI::finishCallbackR(const AsioData& asioData, std::shared_ptr<DataResponse> dataResp) {
+	if (asioData.ec.value() != 0) {
+		if (dataResp->dataReader->done()) {
+
+		}
+		else {
+			// TODO
+			assert(false);
+			return;
+		}
+	}
+	switch (dataResp->cmdResp->getCmd().getName()) {
+	case Command::Name::STOR:
 		session.closeDataConnection();
 		{
 			std::shared_ptr<Response> resp = dataResp->cmdResp;

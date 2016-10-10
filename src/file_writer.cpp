@@ -1,14 +1,15 @@
 #include "file_writer.h"
 #include "buffer.h"
-#include "session.h"
+#include "data_response.h"
+#include "session.h"	// getDTPSocket
 #include "utility.h"
 #include <algorithm>	// min
 #include <cassert>
 
 
 // TODO handle case of empty file
-FileWriter::FileWriter(Session& sess, DataResponse& dr, const Path& p)
-: DataWriter{sess, dr}, path{p}, goodFlag{true} {
+FileWriter::FileWriter(DataResponse& dr, const Path& p)
+: DataWriter{dr}, path{p}, goodFlag{true} {
 	file.open(path.string(), std::ifstream::binary | std::ifstream::ate);
 	if (!file.is_open()) {
 		goodFlag = false;
@@ -48,7 +49,7 @@ void FileWriter::writeSome() {
 	if (bufIndex == outputBuffer.size()) {
 		refillOutputBuffer();
 	}
-	session.getDTPSocket().async_write_some(
+	dataResp.session.getDTPSocket().async_write_some(
 		boost::asio::buffer(
 			outputBuffer.data() + bufIndex,
 			outputBuffer.size() - bufIndex
@@ -76,5 +77,7 @@ void FileWriter::refillOutputBuffer() {
 void FileWriter::asioCallback(const boost::system::error_code& ec, std::size_t nBytes) {
 	bytesSent += nBytes;
 	bufIndex += nBytes;
+	// Although all the bytes in current buffer may have been sent by this point, we
+	//   delay refilling the buffer until necessary--in writeSome().
 	doWriteCallback(ec, nBytes);
 }
